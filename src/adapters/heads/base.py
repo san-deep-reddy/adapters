@@ -260,8 +260,8 @@ class MultipleChoiceHead(PredictionHead):
         self,
         model,
         head_name,
-        num_choices=2,
-        layers=2,
+        num_choices,
+        layers,
         activation_function="tanh",
         id2label=None,
         use_pooler=False,
@@ -281,27 +281,42 @@ class MultipleChoiceHead(PredictionHead):
 
     def forward(self, outputs, cls_output=None, attention_mask=None, return_dict=None, **kwargs):
         if cls_output is None:
-            cls_output = self._get_cls_output(outputs, **kwargs)
-        logits = super().forward(cls_output)
-        logits = logits.view(-1, self.config["num_choices"])
-        loss = None
+            cls_output = self._get_cls_output(outputs)
+        logits = super().forward(cls_output) 
+        positive_logits, negative_logits = logits[0], logits[1:]
         labels = kwargs.pop("labels", None)
+        criterion = torch.nn.MarginRankingLoss(margin=12)
+        loss = 0
+        for i in range(negative_logits.size(0)):
+            loss += criterion(positive_logits, negative_logits[i], torch.tensor([1, -1]).to('cuda'))
+        loss = loss/negative_logits.size(0)
+        outputs = (logits,) + outputs[1:]
         if labels is not None:
-            loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits, labels)
+            outputs = (loss,) + outputs
+        return outputs
 
-        if return_dict:
-            return MultipleChoiceModelOutput(
-                loss=loss,
-                logits=logits,
-                hidden_states=outputs.hidden_states,
-                attentions=outputs.attentions,
-            )
-        else:
-            outputs = (logits,) + outputs[1:]
-            if labels is not None:
-                outputs = (loss,) + outputs
-            return outputs
+        # if cls_output is None:
+        #     cls_output = self._get_cls_output(outputs, **kwargs)
+        # logits = super().forward(cls_output)
+        # logits = logits.view(-1, self.config["num_choices"])
+        # loss = None
+        # labels = kwargs.pop("labels", None)
+        # if labels is not None:
+        #     loss_fct = CrossEntropyLoss()
+        #     loss = loss_fct(logits, labels)
+
+        # if return_dict:
+        #     return MultipleChoiceModelOutput(
+        #         loss=loss,
+        #         logits=logits,
+        #         hidden_states=outputs.hidden_states,
+        #         attentions=outputs.attentions,
+        #     )
+        # else:
+        #     outputs = (logits,) + outputs[1:]
+        #     if labels is not None:
+        #         outputs = (loss,) + outputs
+        #     return outputs
 
 
 class TaggingHead(PredictionHead):
