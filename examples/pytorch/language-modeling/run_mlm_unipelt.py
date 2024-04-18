@@ -568,7 +568,7 @@ def main():
     model.add_adapter("adapter3", config=seq_config)
     adapter_setup = Fuse("adapter1", "adapter2", "adapter3")
     model.add_adapter_fusion(adapter_setup)
-    model.set_active_adapters([adapter_setup, 'adapter1', 'pft', 'lora'])
+    model.train_adapter_fusion([adapter_setup, 'adapter1', 'pft', 'lora'])
 
 
     # Initialize our Trainer
