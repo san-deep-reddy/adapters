@@ -29,6 +29,7 @@ class BartAdapterModel(EmbeddingAdaptersWrapperMixin, ModelWithFlexibleHeadsAdap
         "multilabel_classification",
         "question_answering",
         "seq2seq_lm",
+        "multiple_choice"
     ]
 
     def __init__(self, config: BartConfig, **kwargs):
