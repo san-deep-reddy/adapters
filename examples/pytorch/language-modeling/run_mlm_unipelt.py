@@ -649,24 +649,24 @@ if __name__ == "__main__":
     #tracer = trace.Trace(ignoredirs=[sys.prefix, sys.exec_prefix], trace=1, count=0)
 
     # Replace sys.argv with your arguments
-    sys.argv[1:] = [
-        "--model_name_or_path", "C:/Users/dlais/OneDrive - University of Illinois Chicago/Desktop/testing/model",
-        "--train_file", "train.txt",
-        "--validation_file", "eval.txt",
-        "--do_train", "true",
-        "--do_eval", "true",
-        "--per_device_train_batch_size", "2",
-        "--per_device_eval_batch_size", "2",
-        "--save_total_limit", "20",
-        "--save_steps", "1000",
-        "--evaluation_strategy", "steps",
-        "--report_to", "tensorboard",
-        "--learning_rate", "2e-5",
-        "--num_train_epochs", "1",
-        "--output_dir", "./",
-        "--overwrite_output_dir", "true",
-        "--load_best_model_at_end", "true"
-    ]
+    # sys.argv[1:] = [
+    #     "--model_name_or_path", "C:/Users/dlais/OneDrive - University of Illinois Chicago/Desktop/testing/model",
+    #     "--train_file", "train.txt",
+    #     "--validation_file", "eval.txt",
+    #     "--do_train", "true",
+    #     "--do_eval", "true",
+    #     "--per_device_train_batch_size", "2",
+    #     "--per_device_eval_batch_size", "2",
+    #     "--save_total_limit", "20",
+    #     "--save_steps", "1000",
+    #     "--evaluation_strategy", "steps",
+    #     "--report_to", "tensorboard",
+    #     "--learning_rate", "2e-5",
+    #     "--num_train_epochs", "1",
+    #     "--output_dir", "./",
+    #     "--overwrite_output_dir", "true",
+    #     "--load_best_model_at_end", "true"
+    # ]
     main()
     # sys.stdout = open('console_output.txt', 'w')
     # tracer.run('main()')
