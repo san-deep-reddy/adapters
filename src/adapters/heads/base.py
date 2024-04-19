@@ -284,7 +284,7 @@ class MultipleChoiceHead(PredictionHead):
             cls_output = self._get_cls_output(outputs)
         logits = super().forward(cls_output) 
         labels = kwargs.pop("labels", None)
-        criterion = torch.nn.MarginRankingLoss(margin=12)
+        criterion = torch.nn.MarginRankingLoss(margin=0.5)
         loss = 0
         batch_size = int(logits.size(0))
         set_size = 65
