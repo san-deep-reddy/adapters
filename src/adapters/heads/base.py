@@ -283,13 +283,17 @@ class MultipleChoiceHead(PredictionHead):
         if cls_output is None:
             cls_output = self._get_cls_output(outputs)
         logits = super().forward(cls_output) 
-        positive_logits, negative_logits = logits[0], logits[1:]
         labels = kwargs.pop("labels", None)
         criterion = torch.nn.MarginRankingLoss(margin=12)
         loss = 0
-        for i in range(negative_logits.size(0)):
-            loss += criterion(positive_logits, negative_logits[i], torch.tensor([1, -1]).to('cuda'))
-        loss = loss/negative_logits.size(0)
+        set_size = 65
+        batch_size = set_size * 8
+        for i in range(0, set_size, batch_size):
+            positive_logit = logits[i]
+            negative_logits = logits[i+1:set_size]
+            for negative_logit in negative_logits:
+                loss += criterion(positive_logit, negative_logit, torch.tensor([1, -1]).to('cuda'))
+        loss = loss/ (set_size-1) * 8
         outputs = (logits,) + outputs[1:]
         if labels is not None:
             outputs = (loss,) + outputs
