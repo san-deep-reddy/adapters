@@ -288,7 +288,7 @@ class MultipleChoiceHead(PredictionHead):
         loss = 0
         batch_size = int(logits.size(0))
         set_size = 65
-        num_sets = batch_szie / set_size
+        num_sets = batch_size / set_size
         for i in range(0, set_size, batch_size):
             positive_logit = logits[i]
             negative_logits = logits[i+1:set_size]
