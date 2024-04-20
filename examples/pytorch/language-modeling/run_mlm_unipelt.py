@@ -87,10 +87,6 @@ class ModelArguments:
         default=None,
         metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
     )
-    adapter_type: str = field(
-        default="unipelt with fusion",
-        metadata={"help": "Unipelt or unipelt with fusion or simple adapter without fusion"},
-    )
     config_overrides: Optional[str] = field(
         default=None,
         metadata={
