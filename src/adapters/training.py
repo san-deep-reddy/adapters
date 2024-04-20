@@ -31,6 +31,9 @@ class AdapterArguments:
     lang_adapter_config: Optional[str] = field(
         default=None, metadata={"help": "Language adapter configuration. Either an identifier or a path to a file."}
     )
+    adapter_type: Optional[str] = field(
+        default="unipelt with fusion", metadata={"help": "Unipelt or unipelt with fusion or simple adapter without fusion"},
+    )
 
 
 def setup_adapter_training(
