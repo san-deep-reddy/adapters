@@ -86,6 +86,10 @@ class ModelArguments:
         default=None,
         metadata={"help": "If training from scratch, pass a model type from the list: " + ", ".join(MODEL_TYPES)},
     )
+    adapter_type: str = field(
+        default="unipelt with fusion",
+        metadata={"help": "Unipelt or unipelt with fusion or simple adapter without fusion"},
+    )
     config_overrides: Optional[str] = field(
         default=None,
         metadata={
@@ -555,22 +559,26 @@ def main():
         pad_to_multiple_of=8 if pad_to_multiple_of_8 else None,
     )
     
-    
     lora_config = LoRAConfig(r=8, use_gating=True)
     pft_config = PrefixTuningConfig(prefix_length=10, use_gating=True)
     seq_config = SeqBnConfig(reduction_factor=16, use_gating=True)
-
-
-    model.add_adapter("pft", config=pft_config)
-    model.add_adapter("lora", config=lora_config)
-    model.add_adapter("adapter1", config=seq_config)
-    model.add_adapter("adapter2", config=seq_config)
-    model.add_adapter("adapter3", config=seq_config)
     adapter_setup = Fuse("adapter1", "adapter2", "adapter3")
-    model.add_adapter_fusion(adapter_setup)
-    model.train_adapter_fusion([adapter_setup, 'adapter1', 'pft', 'lora'])
-
-
+    
+    if adapter_type == "unipelt with fusion":
+        model.add_adapter("pft", config=pft_config)
+        model.add_adapter("lora", config=lora_config)
+        model.add_adapter("adapter1", config=seq_config)
+        model.add_adapter("adapter2", config=seq_config)
+        model.add_adapter("adapter3", config=seq_config)
+        model.add_adapter_fusion(adapter_setup)
+        model.train_adapter_fusion([adapter_setup, 'adapter1', 'pft', 'lora'])
+    elif adapter_type == "unipelt":
+        model.add_adapter("pft", config=pft_config)
+        model.add_adapter("lora", config=lora_config)
+        model.add_adapter("adapter1", config=seq_config)
+    elif adapter_type == "simple adapter without fusion":
+        model.add_adapter("adapter1", config=seq_config)
+    
     # Initialize our Trainer
     trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
     trainer = trainer_class(
