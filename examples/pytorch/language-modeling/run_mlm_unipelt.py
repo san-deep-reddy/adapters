@@ -561,7 +561,7 @@ def main():
     seq_config = SeqBnConfig(reduction_factor=16, use_gating=True)
     adapter_setup = Fuse("adapter1", "adapter2", "adapter3")
     
-    if adapter_type == "unipelt with fusion":
+    if adapter_args.adapter_type == "unipelt with fusion":
         model.add_adapter("pft", config=pft_config)
         model.add_adapter("lora", config=lora_config)
         model.add_adapter("adapter1", config=seq_config)
@@ -569,12 +569,12 @@ def main():
         model.add_adapter("adapter3", config=seq_config)
         model.add_adapter_fusion(adapter_setup)
         model.train_adapter_fusion([adapter_setup, 'adapter1', 'pft', 'lora'])
-    elif adapter_type == "unipelt":
+    elif adapter_args.adapter_type  == "unipelt":
         model.add_adapter("pft", config=pft_config)
         model.add_adapter("lora", config=lora_config)
         model.add_adapter("adapter1", config=seq_config)
         model.train_adapters(['adapter1', 'pft', 'lora'])
-    elif adapter_type == "simple adapter without fusion":
+    elif adapter_args.adapter_type  == "simple adapter without fusion":
         model.add_adapter("adapter1", config=seq_config)
         model.train_adapters(['adapter1'])
     
