@@ -25,7 +25,7 @@ import logging
 import math
 import os, trace
 current_dir = os.getcwd()
-my_path = os.path.join(current_dir, "adapter-transformers", "src")
+my_path = os.path.join(current_dir, "adapters", "src")
 import sys
 sys.path.append(my_path)
 import adapters
