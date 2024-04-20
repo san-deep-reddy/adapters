@@ -573,10 +573,10 @@ def main():
         model.add_adapter("pft", config=pft_config)
         model.add_adapter("lora", config=lora_config)
         model.add_adapter("adapter1", config=seq_config)
-        model.train_adapters(['adapter1', 'pft', 'lora'])
+        model.train_adapter(['adapter1', 'pft', 'lora'])
     elif adapter_args.adapter_type  == "simple adapter without fusion":
         model.add_adapter("adapter1", config=seq_config)
-        model.train_adapters(['adapter1'])
+        model.train_adapter(['adapter1'])
     
     # Initialize our Trainer
     trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
