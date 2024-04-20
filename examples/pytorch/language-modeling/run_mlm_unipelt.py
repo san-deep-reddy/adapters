@@ -24,7 +24,8 @@ https://huggingface.co/models?filter=fill-mask
 import logging
 import math
 import os, trace
-my_path = r"C:\Users\dlais\OneDrive - University of Illinois Chicago\Desktop\testing\adapter-transformers\src"
+current_dir = os.getcwd()
+my_path = os.path.join(current_dir, "adapter-transformers", "src")
 import sys
 sys.path.append(my_path)
 import adapters
