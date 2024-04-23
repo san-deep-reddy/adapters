@@ -1249,6 +1249,8 @@ class ModelAdaptersMixin(PushAdapterToHubMixin, ABC):
     ):
         # Attach adapters_config to model_config to ensure saving with old format.
         self.config.adapters = self.adapters_config.to_dict()
+        if 'safe_serialization' in kwargs:
+            del kwargs['safe_serialization']
         super().save_pretrained(save_directory, safe_serialization=False, **kwargs)
         # Remove adapters config
         del self.config.adapters
