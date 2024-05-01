@@ -107,7 +107,7 @@ class ModelArguments:
         metadata={"help": "Where do you want to store the pretrained models downloaded from huggingface.co"},
     )
     use_fast_tokenizer: bool = field(
-        default=True,
+        default=False,
         metadata={"help": "Whether to use one of the fast tokenizer (backed by the tokenizers library) or not."},
     )
     model_revision: str = field(
@@ -178,7 +178,7 @@ class DataTrainingArguments:
         metadata={"help": "Whether distinct lines of text in the dataset are to be handled as distinct sequences."},
     )
     pad_to_max_length: bool = field(
-        default=False,
+        default=True,
         metadata={
             "help": (
                 "Whether to pad all samples to `max_seq_length`. "
@@ -657,7 +657,7 @@ if __name__ == "__main__":
 
     # Replace sys.argv with your arguments
     # sys.argv[1:] = [
-    #     "--model_name_or_path", "C:/Users/dlais/OneDrive - University of Illinois Chicago/Desktop/testing/model",
+    #     "--model_name_or_path", "/testing/model",
     #     "--train_file", "train.txt",
     #     "--validation_file", "eval.txt",
     #     "--do_train", "true",
