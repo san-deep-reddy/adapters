@@ -232,8 +232,8 @@ def main():
             json_file=os.path.abspath(sys.argv[1])
         )
     else:
-        model_args, data_args, training_args, adapter_args = parser.parse_args_into_dataclasses()
-
+        model_args, data_args, training_args, adapter_args, other_args = parser.parse_args_into_dataclasses(return_remaining_strings=True)
+        
     # Setup logging
     logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
