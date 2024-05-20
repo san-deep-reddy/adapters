@@ -478,21 +478,69 @@ def main():
                 desc="Running tokenizer on every text in dataset",
             )
 
-        # Main data processing function that will concatenate all texts from our dataset and generate chunks of
-        # max_seq_length.
         def group_texts(examples):
-            # Concatenate all texts.
+            # Get the padding token ID from the tokenizer
+            pad_token_id = tokenizer.pad_token_id
+            
+            # Concatenate all texts in each key (input_ids, attention_mask, special_token_mask)
             concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-            total_length = len(concatenated_examples[list(examples.keys())[0]])
-            # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
-            # customize this part to your needs.
-            if total_length >= max_seq_length:
-                total_length = (total_length // max_seq_length) * max_seq_length
-            # Split by chunks of max_len.
-            result = {
-                k: [t[i : i + max_seq_length] for i in range(0, total_length, max_seq_length)]
-                for k, t in concatenated_examples.items()
-            }
+            
+            # Get the total length of the concatenated input_ids
+            total_length = len(concatenated_examples['input_ids'])
+
+            # Find the indices in special_token_mask where the value is 1 (start or end of a sentence)
+            special_token_mask = concatenated_examples['special_tokens_mask']
+            sentence_boundaries = [i for i, token in enumerate(special_token_mask) if token == 1]
+
+            # Initialize result dictionary to store the final chunks
+            result = {k: [] for k in examples.keys()}
+            
+            # Initialize a dictionary to store the current chunk of data and its length
+            current_chunk = {k: [] for k in examples.keys()}
+            current_length = 0
+
+            # Iterate through each sentence boundary to create chunks
+            for i in range(len(sentence_boundaries) - 1):
+                start_idx = sentence_boundaries[i]
+                end_idx = sentence_boundaries[i + 1]
+
+                # Calculate the length of the current sentence
+                sentence_length = end_idx - start_idx 
+                
+                # If adding this sentence exceeds max_seq_length, pad and store the current chunk
+                if current_length + sentence_length > max_seq_length:
+                    # Pad the current chunk to max_seq_length
+                    for k in examples.keys():
+                        if k == 'input_ids':
+                            # Pad input_ids with the pad_token_id
+                            current_chunk[k].extend([pad_token_id] * (max_seq_length - current_length))
+                        else:
+                            # Pad attention_mask and special_token_mask with 0
+                            current_chunk[k].extend([0] * (max_seq_length - current_length))
+                        # Append the padded chunk to the result
+                        result[k].append(current_chunk[k][:max_seq_length])
+                    
+                    # Reset current_chunk and current_length for the next chunk
+                    current_chunk = {k: [] for k in examples.keys()}
+                    current_length = 0
+
+                # Add the current sentence to the current chunk
+                for k in examples.keys():
+                    current_chunk[k].extend(concatenated_examples[k][start_idx:end_idx])
+                current_length += sentence_length
+
+            # Add and pad the last chunk if it has content
+            if current_chunk['input_ids']:
+                for k in examples.keys():
+                    if k == 'input_ids':
+                        # Pad input_ids with the pad_token_id
+                        current_chunk[k].extend([pad_token_id] * (max_seq_length - current_length))
+                    else:
+                        # Pad attention_mask and special_token_mask with 0
+                        current_chunk[k].extend([0] * (max_seq_length - current_length))
+                    # Append the padded chunk to the result
+                    result[k].append(current_chunk[k][:max_seq_length])
+
             return result
 
         # Note that with `batched=True`, this map processes 1,000 texts together, so group_texts throws away a
