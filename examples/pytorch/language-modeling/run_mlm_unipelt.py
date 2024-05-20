@@ -439,6 +439,7 @@ def main():
 
         def tokenize_function(examples):
             # Remove empty lines
+            examples[text_column_name] = [line.replace('\t', ' ') for line in examples[text_column_name]]
             examples[text_column_name] = [
                 line for line in examples[text_column_name] if len(line) > 0 and not line.isspace()
             ]
@@ -466,6 +467,7 @@ def main():
         # We use `return_special_tokens_mask=True` because DataCollatorForLanguageModeling (see below) is more
         # efficient when it receives the `special_tokens_mask`.
         def tokenize_function(examples):
+            examples['text'] = [line.replace('\t', ' ') for line in examples['text']]
             return tokenizer(examples[text_column_name], return_special_tokens_mask=True)
 
         with training_args.main_process_first(desc="dataset map tokenization"):
