@@ -467,7 +467,7 @@ def main():
         # We use `return_special_tokens_mask=True` because DataCollatorForLanguageModeling (see below) is more
         # efficient when it receives the `special_tokens_mask`.
         def tokenize_function(examples):
-            examples['text'] = [line.replace('\t', ' ') for line in examples['text']]
+            examples[text_column_name] = [line.replace('\t', ' ') for line in examples[text_column_name]]
             return tokenizer(examples[text_column_name], return_special_tokens_mask=True)
 
         with training_args.main_process_first(desc="dataset map tokenization"):
