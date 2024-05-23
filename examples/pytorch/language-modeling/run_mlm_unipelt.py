@@ -625,6 +625,7 @@ def main():
         model.add_adapter("adapter1", config=seq_config)
         model.train_adapter(['adapter1', 'pft', 'lora'])
     elif adapter_args.adapter_type  == "simple adapter without fusion":
+        seq_config = SeqBnConfig(reduction_factor=16)
         model.add_adapter("adapter1", config=seq_config)
         model.train_adapter(['adapter1'])
     
