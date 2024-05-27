@@ -286,15 +286,14 @@ class MultipleChoiceHead(PredictionHead):
         labels = kwargs.pop("labels", None)
         criterion = torch.nn.MarginRankingLoss(margin=0.5)
         loss = 0
-        batch_size = int(logits.size(0))
-        set_size = 65
-        num_sets = batch_size / set_size
-        for i in range(0, set_size, batch_size):
-            positive_logit = logits[i]
-            negative_logits = logits[i+1:set_size]
-            for negative_logit in negative_logits:
-                loss += criterion(positive_logit, negative_logit, torch.tensor([1, -1]).to('cuda'))
-        loss = loss/ (set_size-1) * num_sets
+        negative_sample_size = 4
+        chunks = torch.chunk(logits, negative_sample_size + 1, dim=0)
+        pos = chunks[0]
+        npos = pos.size(0)
+        ranking_loss = 0
+        for neg in chunks[1:]:
+            ranking_loss += criterion(pos, neg, batch.labels[:npos])
+        loss += ranking_loss / negative_sample_size
         outputs = (logits,) + outputs[1:]
         if labels is not None:
             outputs = (loss,) + outputs
