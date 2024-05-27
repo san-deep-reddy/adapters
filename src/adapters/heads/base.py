@@ -286,7 +286,7 @@ class MultipleChoiceHead(PredictionHead):
         labels = kwargs.pop("labels", None)
         criterion = torch.nn.MarginRankingLoss(margin=0.5)
         loss = 0
-        negative_sample_size = 4
+        negative_sample_size = 64
         chunks = torch.chunk(logits, negative_sample_size + 1, dim=0)
         pos = chunks[0]
         npos = pos.size(0)
