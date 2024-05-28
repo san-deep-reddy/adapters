@@ -1,0 +1,12 @@
+transformers
+datasets
+tqdm
+annoy
+spacy
+scispacy
+pytorch-metric-learning
+elasticsearch
+networkx
+scann
+nltk
+rouge_score
