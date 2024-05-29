@@ -291,8 +291,10 @@ class MultipleChoiceHead(PredictionHead):
         pos = chunks[0]
         npos = pos.size(0)
         ranking_loss = 0
+        labels = torch.ones(npos, dtype=torch.float32, device=logits.device)
+        labels = labels.unsqueeze(1)
         for neg in chunks[1:]:
-            ranking_loss += criterion(pos, neg, labels[:npos])
+            ranking_loss += criterion(pos, neg, labels)
         loss += ranking_loss / negative_sample_size
         outputs = (logits,) + outputs[1:]
         if labels is not None:
