@@ -1,0 +1,7 @@
+pandas
+ipykernel
+accelerate
+transformers
+datasets
+tensorboard
+tensorboardX
