@@ -292,7 +292,7 @@ class MultipleChoiceHead(PredictionHead):
         npos = pos.size(0)
         ranking_loss = 0
         for neg in chunks[1:]:
-            ranking_loss += criterion(pos, neg, batch.labels[:npos])
+            ranking_loss += criterion(pos, neg, labels[:npos])
         loss += ranking_loss / negative_sample_size
         outputs = (logits,) + outputs[1:]
         if labels is not None:
