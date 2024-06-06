@@ -639,7 +639,7 @@ def main():
         model.train_adapter(['adapter1'])
     
     # Initialize our Trainer
-    trainer_class = AdapterTrainer if adapter_args.train_adapter else Trainer
+    trainer_class = AdapterTrainer #if adapter_args.train_adapter else Trainer
     trainer = trainer_class(
         model=model,
         args=training_args,
