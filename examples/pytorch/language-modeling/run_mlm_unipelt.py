@@ -605,10 +605,14 @@ def main():
         mlm_probability=data_args.mlm_probability,
         pad_to_multiple_of=8 if pad_to_multiple_of_8 else None,
     )
-    
-    lora_config = LoRAConfig(r=8, use_gating=True)
-    pft_config = PrefixTuningConfig(prefix_length=10, use_gating=True)
-    seq_config = SeqBnConfig(reduction_factor=16, use_gating=True)
+
+    use_gating = False
+    if adapter_args.adapter_type.startswith("unipelt"):
+        use_gating = True
+        
+    lora_config = LoRAConfig(r=8, use_gating = use_gating)
+    pft_config = PrefixTuningConfig(prefix_length=10, use_gating = use_gating)
+    seq_config = SeqBnConfig(reduction_factor=16, use_gating = use_gating)
     adapter_setup = Fuse("adapter1", "adapter2", "adapter3")
     
     if adapter_args.adapter_type == "unipelt with fusion":
@@ -624,8 +628,13 @@ def main():
         model.add_adapter("lora", config=lora_config)
         model.add_adapter("adapter1", config=seq_config)
         model.train_adapter(['adapter1', 'pft', 'lora'])
+    elif adapter_args.adapter_type  == "fusion without unipelt":
+        model.add_adapter("adapter1", config=seq_config)
+        model.add_adapter("adapter2", config=seq_config)
+        model.add_adapter("adapter3", config=seq_config)
+        model.add_adapter_fusion(adapter_setup)
+        model.train_adapter_fusion([adapter_setup, 'adapter1'])
     elif adapter_args.adapter_type  == "simple adapter without fusion":
-        seq_config = SeqBnConfig(reduction_factor=16)
         model.add_adapter("adapter1", config=seq_config)
         model.train_adapter(['adapter1'])
     
