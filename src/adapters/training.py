@@ -32,7 +32,7 @@ class AdapterArguments:
         default=None, metadata={"help": "Language adapter configuration. Either an identifier or a path to a file."}
     )
     adapter_type: Optional[str] = field(
-        default="unipelt with fusion", metadata={"help": "Unipelt or unipelt with fusion or simple adapter without fusion"},
+        default="simple adapter without fusion", metadata={"help": "Unipelt or unipelt with fusion or simple adapter without fusion"},
     )
 
 
