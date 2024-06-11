@@ -26,6 +26,98 @@ if is_sagemaker_mp_enabled():
 logger = logging.get_logger(__name__)
 
 
+class AdapterTrainer(Trainer):
+    def __init__(
+        self,
+        model: Union[PreTrainedModel, nn.Module] = None,
+        args: TrainingArguments = None,
+        data_collator: Optional[DataCollator] = None,
+        train_dataset: Optional[Dataset] = None,
+        eval_dataset: Optional[Dataset] = None,
+        tokenizer: Optional[PreTrainedTokenizerBase] = None,
+        model_init: Callable[[], PreTrainedModel] = None,
+        compute_metrics: Optional[Callable[[EvalPrediction], Dict]] = None,
+        callbacks: Optional[List[TrainerCallback]] = None,
+        adapter_names: Optional[List[List[str]]] = None,
+        optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
+        preprocess_logits_for_metrics: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = None,
+    ):
+        super().__init__(
+            model,
+            args,
+            data_collator,
+            train_dataset,
+            eval_dataset,
+            tokenizer=tokenizer,
+            model_init=model_init,
+            compute_metrics=compute_metrics,
+            callbacks=[AdapterTrainerCallback(self)] + callbacks if callbacks else [AdapterTrainerCallback(self)],
+            optimizers=optimizers,
+            preprocess_logits_for_metrics=preprocess_logits_for_metrics,
+        )
+
+        if adapter_names is not None:
+            self.model.set_active_adapters(adapter_names)
+        # Set the defaults for loading/ saving model & adapters
+        if isinstance(self.model, PreTrainedModel):
+            model_frozen = getattr(self.model.base_model, "model_frozen", False)
+        else:
+            model_frozen = False
+        if model_frozen and self.model.active_adapters:
+            # Check if training AdapterFusion
+            self.train_adapter_fusion = (
+                isinstance(self.model.active_adapters, Fuse)
+                or isinstance(self.model.active_adapters, AdapterCompositionBlock)
+                and any([isinstance(child, Fuse) for child in self.model.active_adapters.children])
+            )
+        if self.model.active_adapters is None:
+            raise ValueError(
+                "Expected a model with an active adapter setup."
+                "If you want to fully finetune the model use the Trainer class."
+            )
+        if (self.label_names is None or len(self.label_names) < 1) and self.model.active_head is not None:
+            all_label_names = set()
+            for head in self.model._active_heads:
+                all_label_names |= set(self.model.heads[head].get_label_names())
+            self.label_names = list(all_label_names)
+
+    def create_optimizer(self):
+        """
+        Setup the optimizer.
+
+        We provide a reasonable default that works well. If you want to use something else, you can pass a tuple in the
+        Trainer's init through `optimizers`, or subclass and override this method in a subclass.
+        """
+        opt_model = self.model_wrapped if is_sagemaker_mp_enabled() else self.model
+
+        if self.optimizer is None:
+            decay_parameters = self.get_decay_parameter_names(opt_model)
+            if hasattr(self.model, "config") and hasattr(self.model.config, "adapters"):
+                match_str = r"adapter_fusion_layer\..*\.value"
+                decay_parameters = [name for name in decay_parameters if not re.match(match_str, name)]
+            optimizer_grouped_parameters = [
+                {
+                    "params": [
+                        p for n, p in opt_model.named_parameters() if (n in decay_parameters and p.requires_grad)
+                    ],
+                    "weight_decay": self.args.weight_decay,
+                },
+                {
+                    "params": [
+                        p for n, p in opt_model.named_parameters() if (n not in decay_parameters and p.requires_grad)
+                    ],
+                    "weight_decay": 0.0,
+                },
+            ]
+
+            optimizer_cls, optimizer_kwargs = Trainer.get_optimizer_cls_and_kwargs(self.args)
+            self.optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
+
+        if is_sagemaker_mp_enabled():
+            self.optimizer = smp.DistributedOptimizer(self.optimizer)
+
+        return self.optimizer
+
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
         # If we are executing this function, we are the process zero, so we don't check for that.
         output_dir = output_dir if output_dir is not None else self.args.output_dir
