@@ -1,33 +1,37 @@
 import sys, torch, json, random, copy, pickle
 sys.path.insert(0, "/home/ubuntu/adapters/src")
 import adapters
+print(adapters.__file__)
 import numpy as np
 import pandas as pd
 import torch.nn as nn
 import adapters.composition as ac
 from adapters.composition import Fuse
 from adapters.heads import PredictionHead
-from adapters import AutoAdapterModel, SeqBnConfig
+from adapters import AutoAdapterModel, SeqBnConfig, AdapterTrainer
 from transformers import AutoTokenizer, TrainingArguments, EvalPrediction, default_data_collator, Trainer
 from datasets import Dataset, load_dataset
 
+margin = 0.5
+num_negative_samples = 16
+num_positive_samples_per_batch = 360
+batch_size = (1 + num_negative_samples) * num_positive_samples_per_batch
+
+
 model_path = "mse30/bart-base-finetuned-pubmed"
 model = AutoAdapterModel.from_pretrained(model_path)
-tokenizer = AutoTokenizer.from_pretrained(model_path)
+tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
 model_copy = copy.deepcopy(model)
 seq_config = SeqBnConfig(reduction_factor=16, use_gating=False)
 model.add_adapter("adapter2", config=seq_config)
 model.delete_head('default')
-model.add_multiple_choice_head("adapter2", layers=1, num_choices=1)
+model.add_multiple_choice_head("adapter2", layers=1, num_choices=1, return_logits=False, num_negative_samples=num_negative_samples, margin=margin)
 model.train_adapter(['adapter2'])
 
-# json_file_path = "/opt/dlami/nvme/negative_samples_count64.json"
+# json_file_path = "/opt/dlami/nvme/negative_samples.json"
 # with open(json_file_path, 'r') as file:
 #     negative_samples = json.load(file)
 
-num_negative_samples = 4
-num_positive_samples_per_batch = 120
-batch_size = (1 + num_negative_samples) * num_positive_samples_per_batch
 
 # df_list = []
 
@@ -125,7 +129,7 @@ batch_size = (1 + num_negative_samples) * num_positive_samples_per_batch
 
 # max_token_length = 61
 # dataset = preprocess_dataset(dataset, tokenizer, max_token_length)
-# del df
+# del df, df_list, flattened_list, negative_samples
 
 path = f"/opt/dlami/nvme/{num_negative_samples}_{num_positive_samples_per_batch}_padded_dataset.pkl"
 # with open(path, 'wb') as f:
@@ -135,21 +139,26 @@ with open(path, 'rb') as f:
     dataset = pickle.load(f)
 
 training_args = TrainingArguments(
-    output_dir="/home/ubuntu/results",
-    num_train_epochs=10,
+    output_dir="/home/ubuntu/adapters/exp2/results",
+    num_train_epochs=5,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
-    gradient_accumulation_steps=10,
+    gradient_accumulation_steps=5,
     eval_accumulation_steps=1,
     learning_rate=2e-5,
-    evaluation_strategy="epoch",
-    save_strategy="epoch",
+    gradient_checkpointing=True,
+    evaluation_strategy="steps",
+    save_strategy="steps",
     report_to="tensorboard",
-    logging_strategy="epoch",
-    load_best_model_at_end = True,
-    do_train = True,
-    do_eval = True,
-    optim = "adamw_bnb_8bit")
+    logging_strategy="steps",
+    logging_steps=1000,
+    eval_steps=1000,
+    save_steps=1000,
+    load_best_model_at_end=True,
+    do_train=True,
+    do_eval=True,
+    fp16=True,
+    optim="adamw_bnb_8bit")
 
 from transformers import EvalPrediction
 def compute_accuracy(p: EvalPrediction):
@@ -160,12 +169,12 @@ def compute_accuracy(p: EvalPrediction):
     return {"acc": (preds == p.label_ids).mean()}
 
 # Initialize your Trainer
-trainer = Trainer(
-    model=model,
+trainer = AdapterTrainer(
+    model=model, 
     args=training_args,
     train_dataset=dataset["train"],
     eval_dataset=dataset["test"],
     compute_metrics=compute_accuracy  # Add this line to include the compute_metrics function
 )
-
+     
 trainer.train()
