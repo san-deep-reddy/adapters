@@ -262,10 +262,13 @@ class MultipleChoiceHead(PredictionHead):
         head_name,
         num_choices,
         layers,
+        num_negative_samples=4,
+        margin=0.5,
         activation_function="tanh",
         id2label=None,
         use_pooler=False,
         dropout_prob=None,
+        return_logits=False,
     ):
         super().__init__(head_name)
         self.config = {
@@ -277,17 +280,21 @@ class MultipleChoiceHead(PredictionHead):
             "use_pooler": use_pooler,
             "dropout_prob": dropout_prob,
         }
+        self.return_logits = return_logits
+        self.num_negative_samples = num_negative_samples
+        self.margin = margin
         self.build(model)
 
     def forward(self, outputs, cls_output=None, attention_mask=None, return_dict=None, **kwargs):
         if cls_output is None:
             cls_output = self._get_cls_output(outputs)
         logits = super().forward(cls_output) 
-        labels = kwargs.pop("labels", None)
-        criterion = torch.nn.MarginRankingLoss(margin=0.5)
+        if self.return_logits:
+            return logits
+        criterion = torch.nn.MarginRankingLoss(margin=self.margin)
         loss = 0
-        negative_sample_size = 64
-        chunks = torch.chunk(logits, negative_sample_size + 1, dim=0)
+        num_negative_samples = self.num_negative_samples
+        chunks = torch.chunk(logits, num_negative_samples + 1, dim=0)
         pos = chunks[0]
         npos = pos.size(0)
         ranking_loss = 0
@@ -295,11 +302,20 @@ class MultipleChoiceHead(PredictionHead):
         labels = labels.unsqueeze(1)
         for neg in chunks[1:]:
             ranking_loss += criterion(pos, neg, labels)
-        loss += ranking_loss / negative_sample_size
-        outputs = (logits,) + outputs[1:]
-        if labels is not None:
-            outputs = (loss,) + outputs
-        return outputs
+        loss += ranking_loss / num_negative_samples
+
+        if return_dict:
+            return MultipleChoiceModelOutput(
+                loss=loss,
+                logits=logits,
+                hidden_states=outputs.hidden_states if hasattr(outputs, "hidden_states") else None,
+                attentions=outputs.attentions if hasattr(outputs, "attentions") else None,
+            )
+        else:
+            output = (logits,) + outputs[1:]
+            if loss is not None:
+                output = (loss,) + output
+            return output
 
         # if cls_output is None:
         #     cls_output = self._get_cls_output(outputs, **kwargs)
