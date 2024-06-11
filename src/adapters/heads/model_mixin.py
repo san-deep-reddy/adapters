@@ -361,17 +361,20 @@ class ModelWithFlexibleHeadsAdaptersMixin(ModelWithHeadsAdaptersMixin):
         )
         self.add_prediction_head(head, overwrite_ok)
 
+    
     @head_type("multiple_choice")
     def add_multiple_choice_head(
         self,
         head_name,
-        num_choices=2,
-        layers=2,
+        num_choices,
+        layers,   
+        num_negative_samples=4,
+        margin=0.5,
         activation_function="tanh",
         overwrite_ok=False,
         id2label=None,
         use_pooler=use_pooler,
-    ):
+        return_logits=False): 
         """
         Adds a multiple choice head on top of the model.
 
@@ -382,8 +385,9 @@ class ModelWithFlexibleHeadsAdaptersMixin(ModelWithHeadsAdaptersMixin):
             activation_function (str, optional): Activation function. Defaults to 'tanh'.
             overwrite_ok (bool, optional): Force overwrite if a head with the same name exists. Defaults to False.
         """
-        head = MultipleChoiceHead(self, head_name, num_choices, layers, activation_function, id2label, use_pooler)
+        head = MultipleChoiceHead(self, head_name, num_choices, layers, num_negative_samples, margin, activation_function, id2label, use_pooler, return_logits) 
         self.add_prediction_head(head, overwrite_ok)
+
 
     @head_type("tagging")
     def add_tagging_head(
