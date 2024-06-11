@@ -26,60 +26,35 @@ if is_sagemaker_mp_enabled():
 logger = logging.get_logger(__name__)
 
 
-class AdapterTrainer(Trainer):
-    def __init__(
-        self,
-        model: Union[PreTrainedModel, nn.Module] = None,
-        args: TrainingArguments = None,
-        data_collator: Optional[DataCollator] = None,
-        train_dataset: Optional[Dataset] = None,
-        eval_dataset: Optional[Dataset] = None,
-        tokenizer: Optional[PreTrainedTokenizerBase] = None,
-        model_init: Callable[[], PreTrainedModel] = None,
-        compute_metrics: Optional[Callable[[EvalPrediction], Dict]] = None,
-        callbacks: Optional[List[TrainerCallback]] = None,
-        adapter_names: Optional[List[List[str]]] = None,
-        optimizers: Tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR] = (None, None),
-        preprocess_logits_for_metrics: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = None,
-    ):
-        super().__init__(
-            model,
-            args,
-            data_collator,
-            train_dataset,
-            eval_dataset,
-            tokenizer=tokenizer,
-            model_init=model_init,
-            compute_metrics=compute_metrics,
-            callbacks=[AdapterTrainerCallback(self)] + callbacks if callbacks else [AdapterTrainerCallback(self)],
-            optimizers=optimizers,
-            preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-        )
-
-        if adapter_names is not None:
-            self.model.set_active_adapters(adapter_names)
-        # Set the defaults for loading/ saving model & adapters
-        if isinstance(self.model, PreTrainedModel):
-            model_frozen = getattr(self.model.base_model, "model_frozen", False)
+    def _save(self, output_dir: Optional[str] = None, state_dict=None):
+        # If we are executing this function, we are the process zero, so we don't check for that.
+        output_dir = output_dir if output_dir is not None else self.args.output_dir
+        os.makedirs(output_dir, exist_ok=True)
+        logger.info(f"Saving model checkpoint to {output_dir}")
+        # Save a trained model and configuration using `save_pretrained()`.
+        # They can then be reloaded using `from_pretrained()`
+        if not isinstance(self.model, PreTrainedModel):
+            if isinstance(unwrap_model(self.model), PreTrainedModel):
+                if state_dict is None:
+                    state_dict = self.model.state_dict()
+                unwrap_model(self.model).save_pretrained(output_dir, state_dict=state_dict)
+            else:
+                logger.info("Trainer.model is not a `PreTrainedModel`, only saving its state dict.")
+                if state_dict is None:
+                    state_dict = self.model.state_dict()
+                torch.save(state_dict, os.path.join(output_dir, WEIGHTS_NAME))
         else:
-            model_frozen = False
-        if model_frozen and self.model.active_adapters:
-            # Check if training AdapterFusion
-            self.train_adapter_fusion = (
-                isinstance(self.model.active_adapters, Fuse)
-                or isinstance(self.model.active_adapters, AdapterCompositionBlock)
-                and any([isinstance(child, Fuse) for child in self.model.active_adapters.children])
-            )
-        if self.model.active_adapters is None:
-            raise ValueError(
-                "Expected a model with an active adapter setup."
-                "If you want to fully finetune the model use the Trainer class."
-            )
-        if (self.label_names is None or len(self.label_names) < 1) and self.model.active_head is not None:
-            all_label_names = set()
-            for head in self.model._active_heads:
-                all_label_names |= set(self.model.heads[head].get_label_names())
-            self.label_names = list(all_label_names)
+            self.model.save_all_adapters(output_dir)
+            if self.train_adapter_fusion:
+                self.model.save_all_adapter_fusions(output_dir)
+            if hasattr(self.model, "heads"):
+                self.model.save_all_heads(output_dir)
+        if self.tokenizer is not None:
+            self.tokenizer.save_pretrained(output_dir)
+
+        # Good practice: save your training arguments together with the trained model
+        torch.save(self.args, os.path.join(output_dir, "training_args.bin"))
+
 
     def create_optimizer(self):
         """
