@@ -162,9 +162,6 @@ training_args = TrainingArguments(
 
 from transformers import EvalPrediction
 def compute_accuracy(p: EvalPrediction):
-    print(p, "\n", type())
-    print(p.predictions, "\n", p.redictions.shape)
-    print(p.label_ids, "\n")
     preds = np.argmax(p.predictions[0], axis=1).flatten()
     return {"acc": (preds == p.label_ids).mean()}
 
